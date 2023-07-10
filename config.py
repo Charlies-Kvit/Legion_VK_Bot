@@ -9,3 +9,4 @@ db_session.global_init('db/db.sqlite')
 session = db_session.create_session()
 users_data = session.query(User).all()
 users = {user.login: user.to_dict(only=("loyalty", "unemployed_days", "vacation")) for user in users_data}
+session.close()

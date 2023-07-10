@@ -22,7 +22,7 @@ async def new_user(message: Message):
 @bot.on.message()
 async def new_user(message: Message):
     users_info = await bot.api.users.get(message.from_id)
-    if users_info[0].id not in users:
+    if users_info[0].id not in users.keys():
         db_sess = db_session.create_session()
         users[users_info[0].id] = {"loyalty": 1, "unemployed_days": 0, "vacation": 0}
         user = User(
@@ -32,16 +32,20 @@ async def new_user(message: Message):
         db_sess.commit()
         db_sess.close()
         await message.answer(users)
-    try:
-        if message.action.type.value == "chat_kick_user":
-            await message.answer(users_info[0].id)
-    except Exception:
-        pass
+    if message.action.type.value == "chat_kick_user":
+        users_info = await bot.api.users.get(message.action.member_id)
+        users.pop(users_info[0].id)
+        db_sess = db_session.create_session()
+        user = db_sess.query(User).filter(User.login == users_info[0].id)[0]
+        db_sess.delete(user)
+        db_sess.commit()
+        db_sess.close()
+        await message.answer(f"Пользователь {users_info[0].first_name} удален из бд")
 
 
-@bot.on.chat_message(action='CHAT_KICK_USER')
+"""@bot.on.chat_message(action='CHAT_KICK_USER')
 async def user_left(message: MessageEvent):
     await message.send_message('goodby')
-    print("KIKED")
+    print("KIKED")"""
 
 bot.run_forever()
