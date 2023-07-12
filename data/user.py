@@ -10,3 +10,5 @@ class User(SqlAlchemyBase, SerializerMixin):
     loyalty = sqlalchemy.Column(sqlalchemy.Integer, default=1)
     unemployed_days = sqlalchemy.Column(sqlalchemy.Integer, default=0)
     vacation = sqlalchemy.Column(sqlalchemy.Integer, default=0)
+    reports_count = sqlalchemy.Column(sqlalchemy.Integer, default=0)
+    warning_user = sqlalchemy.Column(sqlalchemy.Boolean, default=False)

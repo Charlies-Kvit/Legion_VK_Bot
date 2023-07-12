@@ -7,3 +7,7 @@ labeler = BotLabeler()
 state_dispenser = BuiltinStateDispenser()
 db_session.global_init('db/db.sqlite')
 REPORTS_CHAT_ID = 2
+HOUR = 23
+MINUTES = 50
+WARNING_HOUR = 15
+WARNING_MINUTES = 30
