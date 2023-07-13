@@ -52,7 +52,7 @@ async def take_vacation(message: Message, user=None, days=None):
     user.vacation = int(days)
     db_sess.commit()
     db_sess.close()
-    await message.answer(f"Пользователь {user_info[0].first_name} получил отпуск: {days} дней(день), не знаю короче")
+    await message.answer(f"Пользователь {user_info[0].first_name} получил отпуск: {days}(вывод будет норм не в бете или в обнове)")
 
 
 @bot.on.chat_message(OnlyAdmins(), text=['.отнять отпуск <user>', '.отнять отпуск'])
@@ -71,12 +71,12 @@ async def pick_up_vacation(message: Message, user=None):
         return
     if user.vacation == 0:
         db_sess.close()
-        await message.answer("У этого пользователя и так нет отпуска(дайте отпуск мне хотяб, плиз)")
+        await message.answer("У этого пользователя и так нет отпуска")
         return
     user.vacation = 0
     db_sess.commit()
     db_sess.close()
-    await message.answer(f"Отпуск у {user_info[0].first_name} успешно отнят(сука, за что?)")
+    await message.answer(f"Отпуск у {user_info[0].first_name} успешно отнят")
 
 
 @bot.loop_wrapper.interval(minutes=5)
@@ -274,8 +274,24 @@ async def meme(message: Message):
     await message.answer("✅ На месте", attachment=photo)
 
 
+@bot.on.chat_message(text=['.регистрация'])
+async def registration(message: Message):
+    db_sess = db_session.create_session()
+    users = await bot.api.messages.get_conversation_members(peer_id=message.peer_id)
+    users_list = [user.login for user in db_sess.query(User).all()]
+    for user in users.profiles:
+        if str(user.id) in users_list:
+            continue
+        user_new = User(login=user.id)
+        db_sess.add(user_new)
+    db_sess.commit()
+    db_sess.close()
+    await message.answer("Все пользователи успешно добавлены в бд)")
+
+
 @bot.on.chat_message()
 async def leave(message: Message):
+    # await message.answer(message.chat_id)
     session = db_session.create_session()
     session.close_all()
     print("all session close")
