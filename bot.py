@@ -63,7 +63,7 @@ async def delete_user_bd(message: Message, user=None):
 
 @bot.on.chat_message(OnlyAdmins(), text=['.проверить бд'])
 async def check_database(message: Message):
-    users_in_chat = await bot.api.messages.get_conversation_members(peer_id=message.peer_id)
+    users_in_chat = await bot.api.messages.get_conversation_members(peer_id="2000000004")
     users_id = [int(user.id) for user in users_in_chat.profiles]
     db_sess = db_session.create_session()
     users_from_bd = db_sess.query(User).all()
