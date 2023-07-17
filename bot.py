@@ -100,6 +100,19 @@ async def take_vacation(message: Message, user=None, days=None):
         f"Пользователь {user_info[0].first_name} получил отпуск на {days} {answer}")
 
 
+@bot.on.chat_message(OnlyAdmins(), text=['.отпуск список'])
+async def get_list_vacation(message: Message):
+    db_sess = db_session.create_session()
+    users = db_sess.query(User).filter(User.vacation > 0)
+    answer = ['Пользователи в отпуске:']
+    for num, user in enumerate(users):
+        user_info = await bot.api.users.get(user.login)
+        answer.append(f"{num + 1}. @id{user.login}({user_info[0].first_name} {user_info[0].last_name}), осталось: "
+                      f"{user.vacation} д.")
+    db_sess.close()
+    await message.answer('\n'.join(answer))
+
+
 @bot.on.chat_message(OnlyAdmins(), text=['.отнять отпуск <user>', '.отнять отпуск'])
 async def pick_up_vacation(message: Message, user=None):
     if user is None:
@@ -122,12 +135,6 @@ async def pick_up_vacation(message: Message, user=None):
     db_sess.commit()
     db_sess.close()
     await message.answer(f"Отпуск у {user_info[0].first_name} успешно аннулирован")
-
-
-@bot.on.chat_message(OnlySuperAdmins(), text=['/send_message'])
-async def test_func(message: Message):
-    user_info = await bot.api.users.get(message.from_id)
-    await message.answer(f'@|{user_info[0].first_name}{user_info[0].last_name}')
 
 
 @bot.loop_wrapper.interval(minutes=4)
@@ -158,10 +165,13 @@ async def user_warning():
         db_sess = db_session.create_session()
         warning_users = db_sess.query(User).filter(User.warning_user is True)
         for user in warning_users:
-            await bot.api.messages.send(chat_id=4, random_id=0, message=f"Внимание! Уважаемый пользователь, вам"
+            user_info = await bot.api.users.get(user.login)
+            first_name, last_name = user_info[0].first_name, user_info[0].last_name
+            await bot.api.messages.send(chat_id=4, random_id=0, message=f"Внимание! Уважаемый @id{user.login}"
+                                                                        f"({first_name} {last_name}), вам"
                                                                         "нужно приступить к работе, иначе "
                                                                         "через два дня вы будете изгнаны автоматом,"
-                                                                        " с уважением,\n legion_as(Легион)")
+                                                                        " с уважением,\n @legion_as(Легион)")
             user.warning_user = False
         db_sess.commit()
         db_sess.close()
@@ -231,11 +241,21 @@ async def get_admin_list(message: Message):
     await message.answer('\n'.join(answer))
 
 
+@bot.on.chat_message(text=['.инфо', '.о боте'])
+async def get_info_about_bot(message: Message):
+    message.answer("Версия бота: Бета 1.0.0\n"
+                   "Идея: Имя Фамилия"
+                   "Разработчик: Глеб Бутович"
+                   "Главный по поддержке хоста: Евгений Грущенко"
+                   "Выражаю благодарность Тиомну, подсказывал тогда, ")
+
+
 @bot.on.chat_message(OnlyAdmins(), text=['.хелп'])
 async def get_help(message: Message):
     await message.answer("""Вот какие команды есть в боте:\n
     .отпуск - дает отпуск юзеру\n
     .отнять отпуск - отнимает отпуск\n
+    .отпуск список - показывает\n
     .добавить админа - добавляет админа из бд(только для админов с правами супер)\n
     .удалить админа - удаляет админа из бд(только для админов с правами супер)\n
     .админы список - выдает список админов\n
@@ -322,8 +342,7 @@ async def get_user_info(message: Message, user=None):
 
 @bot.on.chat_message(OnlyAdmins(), text=['чурбан', 'Чурбан'])
 async def meme(message: Message):
-    vars = [0, 1]
-    var = random.choice(vars)
+    var = random.choice([0, 1])
     if var == 0:
         photo = await photo_uploader.upload(
             file_source="churman.jpg"
@@ -352,7 +371,6 @@ async def registration(message: Message):
 async def leave(message: Message):
     session = db_session.create_session()
     session.close_all()
-    print("all session close")
 
 
 if __name__ == '__main__':

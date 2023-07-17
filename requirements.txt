@@ -1,3 +1,4 @@
 SQLAlchemy~=2.0.18
 vkbottle~=4.3.12
 sqlalchemy_serializer
+requests
