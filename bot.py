@@ -137,7 +137,7 @@ async def pick_up_vacation(message: Message, user=None):
     await message.answer(f"Отпуск у {user_info[0].first_name} успешно аннулирован")
 
 
-@bot.loop_wrapper.interval(minutes=4)
+@bot.loop_wrapper.interval(minutes=5)
 async def auto_minus_loyalty():
     if check_time():
         db_sess = db_session.create_session()
@@ -247,7 +247,7 @@ async def get_info_about_bot(message: Message):
                    "Идея: Имя Фамилия"
                    "Разработчик: Глеб Бутович"
                    "Главный по поддержке хоста: Евгений Грущенко"
-                   "Выражаю благодарность Тиомну, подсказывал тогда, ")
+                   "Выражаю благодарность Тиомну, подсказывал тогда, когда я был невнимателен")
 
 
 @bot.on.chat_message(OnlyAdmins(), text=['.хелп'])
