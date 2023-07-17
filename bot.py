@@ -243,11 +243,11 @@ async def get_admin_list(message: Message):
 
 @bot.on.chat_message(text=['.инфо', '.о боте'])
 async def get_info_about_bot(message: Message):
-    message.answer("Версия бота: Бета 1.0.0\n"
-                   "Идея: Имя Фамилия"
-                   "Разработчик: Глеб Бутович"
-                   "Главный по поддержке хоста: Евгений Грущенко"
-                   "Выражаю благодарность Тиомну, подсказывал тогда, когда я был невнимателен")
+    await message.answer("Версия бота: Бета 1.0.0\n"
+                         "Идея: Имя Фамилия\n"
+                         "Разработчик: Глеб Бутович\n"
+                         "Главный по поддержке хоста: Евгений Грущенко\n"
+                         "Выражаю благодарность Тиомну, подсказывал тогда, когда я был невнимателен")
 
 
 @bot.on.chat_message(OnlyAdmins(), text=['.хелп'])
@@ -314,7 +314,7 @@ async def get_top_users(message: Message):
 async def get_report_message(message: Message):
     try:
         db_sess = db_session.create_session()
-        if message.attachments[0].wall_reply.text:
+        if message.attachments[0].wall_reply:
             user = db_sess.query(User).filter(User.login == message.from_id)[0]
             user.loyalty += 1
             db_sess.commit()
@@ -369,6 +369,7 @@ async def registration(message: Message):
 
 @bot.on.chat_message()
 async def leave(message: Message):
+    # await message.answer(message.chat_id)
     session = db_session.create_session()
     session.close_all()
 

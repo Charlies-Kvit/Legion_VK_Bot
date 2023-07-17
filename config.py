@@ -6,7 +6,7 @@ api = API(token)
 labeler = BotLabeler()
 state_dispenser = BuiltinStateDispenser()
 db_session.global_init('db/db.sqlite')
-REPORTS_CHAT_ID = 4
+REPORTS_CHAT_ID = 5
 HOUR = 23
 MINUTES = 50
 WARNING_HOUR = 15
