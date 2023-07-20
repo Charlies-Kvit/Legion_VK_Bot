@@ -41,6 +41,17 @@ async def delete_user(message: Message):
     await message.answer(f"Пользователь {users_info[0].first_name} удален из базы данных")
 
 
+@bot.on.chat_message(OnlyAdmins(), text=[".кик <user>", '.кик'])
+async def kick_user(message: Message, user=None):
+    if user is None:
+        await message.answer("Используйте .кик @user для кика юзера из чата")
+        return
+    user_id = int(user[3:user.find("|")])
+    await bot.api.messages.remove_chat_user(chat_id=message.chat_id, user_id=user_id)
+    user_info = await bot.api.users.get(user_id)
+    await message.answer(f'Пользователь {user_info[0].first_name} {user_info[0].last_name} выгнан из чата')
+
+
 @bot.on.chat_message(OnlyAdmins(), text=['.удалить <user>', '.удалить'])
 async def delete_user_bd(message: Message, user=None):
     if user is None:
@@ -137,7 +148,7 @@ async def pick_up_vacation(message: Message, user=None):
     await message.answer(f"Отпуск у {user_info[0].first_name} успешно аннулирован")
 
 
-@bot.loop_wrapper.interval(minutes=5)
+@bot.loop_wrapper.interval(minutes=4)
 async def auto_minus_loyalty():
     if check_time():
         db_sess = db_session.create_session()
@@ -146,7 +157,16 @@ async def auto_minus_loyalty():
             if user.vacation != 0:
                 user.vacation -= 1
                 continue
-            user.loyalty -= 1
+            user.loyalty -= (user.unemployed_days + 1)
+            if user.loyalty == -10 or user.unemployed_days == 10:
+                user_id = int(user[3:user.find("|")])
+                for chat_id in [0, 1]:  # [4, 5]
+                    await bot.api.messages.remove_chat_user(chat_id=chat_id, user_id=user_id)
+                user_info = await bot.api.users.get(user.login)
+                await bot.api.messages.send(chat_id=0, random_id=0,
+                                            message=f'Пользователь {user_info[0].first_name} '
+                                                    f'{user_info[0].last_name} выгнан из чата')
+                continue
             if user.reports_count == 0:
                 user.unemployed_days += 1
                 if user.loyalty == -8:
@@ -243,7 +263,7 @@ async def get_admin_list(message: Message):
 
 @bot.on.chat_message(text=['.инфо', '.о боте'])
 async def get_info_about_bot(message: Message):
-    await message.answer("Версия бота: Бета 1.0.0\n"
+    await message.answer("Версия бота: Бета 2.0.0\n"
                          "Идея: Имя Фамилия\n"
                          "Разработчик: Глеб Бутович\n"
                          "Главный по поддержке хоста: Евгений Грущенко\n"
@@ -253,6 +273,7 @@ async def get_info_about_bot(message: Message):
 @bot.on.chat_message(OnlyAdmins(), text=['.хелп'])
 async def get_help(message: Message):
     await message.answer("""Вот какие команды есть в боте:\n
+    .инфо - выводит информацию о боте\n
     .отпуск - дает отпуск юзеру\n
     .отнять отпуск - отнимает отпуск\n
     .отпуск список - показывает\n
@@ -264,6 +285,7 @@ async def get_help(message: Message):
     .удалить - удаляет юзера из базы данных\n
     .проверить бд - удаляет всех из бд, кого нет в чате\n
     .регистрация - добавляет в бд всех, кого нет в бд, но есть в чате\n
+    .кик - кикает юзера из чата\n
     .юзер - выводит инфу о конкретном юзере(Если хотите узнать о конкретном пользователе, то используйте следующий
     синтаксис: .юзер <user>, иначе вы получите инфу о себе)\n
     В остальных же случаях вы можете подробнее узнать о команде введя ее без параметров)""")
@@ -352,7 +374,7 @@ async def meme(message: Message):
         await message.answer("САМ ЧУРБАН")
 
 
-@bot.on.chat_message(text=['.регистрация'])
+@bot.on.chat_message(OnlyAdmins(), text=['.регистрация'])
 async def registration(message: Message):
     db_sess = db_session.create_session()
     users = await bot.api.messages.get_conversation_members(peer_id=message.peer_id)
