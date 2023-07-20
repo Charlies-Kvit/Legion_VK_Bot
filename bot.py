@@ -1,4 +1,3 @@
-import requests
 import random
 from other_functions import change_loyalty, check_time, check_warning_time
 from data import db_session
@@ -160,12 +159,10 @@ async def auto_minus_loyalty():
             user.loyalty -= (user.unemployed_days + 1)
             if user.loyalty == -10 or user.unemployed_days == 10:
                 user_id = int(user[3:user.find("|")])
-                for chat_id in [0, 1]:  # [4, 5]
-                    await bot.api.messages.remove_chat_user(chat_id=chat_id, user_id=user_id)
-                user_info = await bot.api.users.get(user.login)
-                await bot.api.messages.send(chat_id=0, random_id=0,
+                user_info = await bot.api.users.get(user_id)
+                await bot.api.messages.send(chat_id=0, random_id=0, peer_id=2000000001,
                                             message=f'Пользователь {user_info[0].first_name} '
-                                                    f'{user_info[0].last_name} выгнан из чата')
+                                                    f'{user_info[0].last_name} должен быть выгнан из Легиона')
                 continue
             if user.reports_count == 0:
                 user.unemployed_days += 1
@@ -174,7 +171,8 @@ async def auto_minus_loyalty():
             else:
                 user.reports_count = 0
                 user.unemployed_days = 0
-        await bot.api.messages.send(chat_id=0, random_id=0, message="Авто минус очков лояльности прошел успешно")
+        await bot.api.messages.send(chat_id=0, random_id=0, message="Авто минус очков лояльности прошел успешно",
+                                    peer_id=2000000001)
         db_sess.commit()
         db_sess.close()
 
@@ -191,7 +189,8 @@ async def user_warning():
                                                                         f"({first_name} {last_name}), вам"
                                                                         "нужно приступить к работе, иначе "
                                                                         "через два дня вы будете изгнаны автоматом,"
-                                                                        " с уважением,\n @legion_as(Легион)")
+                                                                        " с уважением,\n @legion_as(Легион)",
+                                        peer_id=2000000005)
             user.warning_user = False
         db_sess.commit()
         db_sess.close()
@@ -267,7 +266,7 @@ async def get_info_about_bot(message: Message):
                          "Идея: Имя Фамилия\n"
                          "Разработчик: Глеб Бутович\n"
                          "Главный по поддержке хоста: Евгений Грущенко\n"
-                         "Выражаю благодарность Тиомну, подсказывал тогда, когда я был невнимателен")
+                         "Выражаю благодарность Тимону, подсказывал тогда, когда я был невнимателен")
 
 
 @bot.on.chat_message(OnlyAdmins(), text=['.хелп'])
@@ -391,7 +390,6 @@ async def registration(message: Message):
 
 @bot.on.chat_message()
 async def leave(message: Message):
-    # await message.answer(message.chat_id)
     session = db_session.create_session()
     session.close_all()
 
