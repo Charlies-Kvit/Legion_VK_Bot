@@ -338,6 +338,7 @@ async def get_report_message(message: Message):
             user = db_sess.query(User).filter(User.login == message.from_id)[0]
             user.loyalty += 1
             user.unemployed_days = 0
+            user.vacation = 0
             db_sess.commit()
             db_sess.close()
             user_info = await bot.api.users.get(message.from_id)
