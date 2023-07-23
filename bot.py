@@ -6,7 +6,7 @@ from data.admins import Admins
 from vkbottle import Bot, PhotoMessageUploader
 from vkbottle.bot import Message
 from handlers.custom_rules import MessageFromGroupChat, OnlySuperAdmins, OnlyAdmins
-from config import api, state_dispenser, labeler, REPORTS_CHAT_ID, HOUR, MINUTES
+from config import api, state_dispenser, labeler, REPORTS_CHAT_ID
 
 bot = Bot(
     api=api,
@@ -262,7 +262,7 @@ async def get_admin_list(message: Message):
 
 @bot.on.chat_message(text=['.инфо', '.о боте'])
 async def get_info_about_bot(message: Message):
-    await message.answer("Версия бота: Бета 2.0.0\n"
+    await message.answer("Версия бота: Бета 2.0.1\n"
                          "Идея: Имя Фамилия\n"
                          "Разработчик: Глеб Бутович\n"
                          "Главный по поддержке хоста: Евгений Грущенко\n"
@@ -340,6 +340,9 @@ async def get_report_message(message: Message):
             user.loyalty += 1
             db_sess.commit()
             db_sess.close()
+            user_info = await bot.api.users.get(message.from_id)
+            await bot.api.messages.send(chat_id=0, random_id=0, peer_id=2000000001,
+                                        message=f"{user_info[0].first_name} {user_info[0].last_name} отправил отчет, успешно засчитан")
     except IndexError:
         db_sess.close()
         # await bot.api.messages.delete(peer_id=message.peer_id, message_ids=message_id, delete_for_all=True,
@@ -390,6 +393,7 @@ async def registration(message: Message):
 
 @bot.on.chat_message()
 async def leave(message: Message):
+    # await message.answer(message.chat_id)
     session = db_session.create_session()
     session.close_all()
 

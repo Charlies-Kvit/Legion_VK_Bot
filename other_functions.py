@@ -3,7 +3,7 @@ from config import HOUR, MINUTES, WARNING_HOUR, WARNING_MINUTES
 
 
 def check_time():
-    return datetime.datetime.now().hour == HOUR and MINUTES - 5 <= datetime.datetime.now().minute <= MINUTES
+    return datetime.datetime.now().hour == HOUR and MINUTES - 4 <= datetime.datetime.now().minute <= MINUTES
 
 
 def check_warning_time():
