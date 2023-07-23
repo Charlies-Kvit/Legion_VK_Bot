@@ -170,7 +170,6 @@ async def auto_minus_loyalty():
                     user.warning_user = True
             else:
                 user.reports_count = 0
-                user.unemployed_days = 0
         await bot.api.messages.send(chat_id=0, random_id=0, message="Авто минус очков лояльности прошел успешно",
                                     peer_id=2000000001)
         db_sess.commit()
@@ -338,6 +337,7 @@ async def get_report_message(message: Message):
         if message.attachments[0].wall_reply:
             user = db_sess.query(User).filter(User.login == message.from_id)[0]
             user.loyalty += 1
+            user.unemployed_days = 0
             db_sess.commit()
             db_sess.close()
             user_info = await bot.api.users.get(message.from_id)
