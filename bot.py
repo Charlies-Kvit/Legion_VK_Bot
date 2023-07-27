@@ -110,7 +110,23 @@ async def take_vacation(message: Message, user=None, days=None):
         f"Пользователь {user_info[0].first_name} получил отпуск на {days} {answer}")
 
 
-@bot.on.chat_message(OnlyAdmins(), text=['.отпуск список'])
+@bot.on.chat_message(OnlyAdmins(), text=['.неактивы'])
+async def get_list_not_active(message: Message):
+    db_sess = db_session.create_session()
+    not_active_users = db_sess.query(User).filter(User.unemployed_days != 0)
+    answer = ['Неактивные пользователи:']
+    for num, user in enumerate(not_active_users):
+        user_info = await bot.api.users.get(user.login)
+        answer.append(f"{num + 1} @id{user.login}({user_info[0].first_name} {user_info[0].last_name}), неактивен уже "
+                      f"{user.unemployed_days} д.")
+    db_sess.close()
+    if len(answer) != 1:
+        await message.answer('\n'.join(answer))
+    else:
+        await message.answer("Неактивные пользователи отсутствуют")
+
+
+@bot.on.chat_message(OnlyAdmins(), text=['.отпуски'])
 async def get_list_vacation(message: Message):
     db_sess = db_session.create_session()
     users = db_sess.query(User).filter(User.vacation > 0)
@@ -156,8 +172,8 @@ async def auto_minus_loyalty():
             if user.vacation != 0:
                 user.vacation -= 1
                 continue
-            user.loyalty -= (user.unemployed_days + 1)
-            if user.loyalty == -10 or user.unemployed_days == 10:
+            user.loyalty -= user.unemployed_days
+            if user.loyalty <= -10 or user.unemployed_days == 10:
                 user_id = int(user[3:user.find("|")])
                 user_info = await bot.api.users.get(user_id)
                 await bot.api.messages.send(chat_id=0, random_id=0, peer_id=2000000001,
@@ -166,7 +182,7 @@ async def auto_minus_loyalty():
                 continue
             if user.reports_count == 0:
                 user.unemployed_days += 1
-                if user.loyalty == -8:
+                if user.loyalty <= 0:
                     user.warning_user = True
             else:
                 user.reports_count = 0
@@ -187,7 +203,7 @@ async def user_warning():
             await bot.api.messages.send(chat_id=4, random_id=0, message=f"Внимание! Уважаемый @id{user.login}"
                                                                         f"({first_name} {last_name}), вам"
                                                                         "нужно приступить к работе, иначе "
-                                                                        "через два дня вы будете изгнаны автоматом,"
+                                                                        "совсем скоро вы будете изгнаны из Легиона,"
                                                                         " с уважением,\n @legion_as(Легион)",
                                         peer_id=2000000005)
             user.warning_user = False
@@ -261,7 +277,7 @@ async def get_admin_list(message: Message):
 
 @bot.on.chat_message(text=['.инфо', '.о боте'])
 async def get_info_about_bot(message: Message):
-    await message.answer("Версия бота: Бета 2.0.1\n"
+    await message.answer("Версия бота: 2.1.0\n"
                          "Идея: Имя Фамилия\n"
                          "Разработчик: Глеб Бутович\n"
                          "Главный по поддержке хоста: Евгений Грущенко\n"
@@ -274,7 +290,7 @@ async def get_help(message: Message):
     .инфо - выводит информацию о боте\n
     .отпуск - дает отпуск юзеру\n
     .отнять отпуск - отнимает отпуск\n
-    .отпуск список - показывает\n
+    .отпуски - показывает список тех, кто в отпуске\n
     .добавить админа - добавляет админа из бд(только для админов с правами супер)\n
     .удалить админа - удаляет админа из бд(только для админов с правами супер)\n
     .админы список - выдает список админов\n
