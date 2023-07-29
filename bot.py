@@ -113,12 +113,15 @@ async def take_vacation(message: Message, user=None, days=None):
 @bot.on.chat_message(OnlyAdmins(), text=['.неактивы'])
 async def get_list_not_active(message: Message):
     db_sess = db_session.create_session()
-    not_active_users = db_sess.query(User).filter(User.unemployed_days != 0)
+    users_info = db_sess.query(User).filter(User.unemployed_days != 0)
+    users = {user.login: user.unemployed_days for user in users_info}
+    sorted_users = dict(sorted(users.items(), key=lambda item: item[1], reverse=True))
+    users_id = sorted_users.keys()
     answer = ['Неактивные пользователи:']
-    for num, user in enumerate(not_active_users):
-        user_info = await bot.api.users.get(user.login)
-        answer.append(f"{num + 1} @id{user.login}({user_info[0].first_name} {user_info[0].last_name}), неактивен уже "
-                      f"{user.unemployed_days} д.")
+    for num, key in enumerate(users_id):
+        user_info = await bot.api.users.get(key)
+        answer.append(f"{num + 1} @id{user_info[0].id}({user_info[0].first_name} {user_info[0].last_name}), "
+                      f"неактивен уже {sorted_users[key]} д.")
     db_sess.close()
     if len(answer) != 1:
         await message.answer('\n'.join(answer))
@@ -277,7 +280,7 @@ async def get_admin_list(message: Message):
 
 @bot.on.chat_message(text=['.инфо', '.о боте'])
 async def get_info_about_bot(message: Message):
-    await message.answer("Версия бота: 2.1.0\n"
+    await message.answer("Версия бота: 2.2.0\n"
                          "Идея: Имя Фамилия\n"
                          "Разработчик: Глеб Бутович\n"
                          "Главный по поддержке хоста: Евгений Грущенко\n"
@@ -332,7 +335,7 @@ async def change_loyalty_user(message: Message, user=None, loyalty=None):
     db_sess.close()
 
 
-@bot.on.chat_message(OnlyAdmins(), text=['/топ', '.рейтинг'])
+@bot.on.chat_message(text=['/топ', '.рейтинг'])
 async def get_top_users(message: Message):
     db_sess = db_session.create_session()
     users_info = db_sess.query(User).all()
@@ -353,7 +356,13 @@ async def get_report_message(message: Message):
         db_sess = db_session.create_session()
         if message.attachments[0].wall_reply:
             user = db_sess.query(User).filter(User.login == message.from_id)[0]
+            if user is None:
+                user = User(
+                    login=message.from_id
+                )
+                db_sess.add(user)
             user.loyalty += 1
+            user.reports_count += 1
             user.unemployed_days = 0
             user.vacation = 0
             db_sess.commit()
