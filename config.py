@@ -1,12 +1,9 @@
-from vkbottle import API, BuiltinStateDispenser
-from vkbottle.bot import BotLabeler
 from data import db_session
 from api_key import token
-api = API(token)
-labeler = BotLabeler()
-state_dispenser = BuiltinStateDispenser()
+
+token = token
 db_session.global_init('db/db.sqlite')
-REPORTS_CHAT_ID = 5  # 5 перед выкатом
+REPORTS_CHAT_ID = 2000000001  # 6 перед выкатом
 HOUR = 23
 MINUTES = 50
 WARNING_HOUR = 15
