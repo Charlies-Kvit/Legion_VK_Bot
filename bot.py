@@ -88,18 +88,18 @@ async def delete_user_bd(vk, event):
 # @bot.on.chat_message(OnlyAdmins(), text=['.проверить бд'])
 async def check_database(vk, event):
     users_in_chat = await vk.messages_getConversationMembers(peer_id=event['object']['message']['peer_id'])
-    users_id = [int(user.id) for user in users_in_chat.profiles]
+    users_id = [int(user['id']) for user in users_in_chat['profiles']]
     db_sess = db_session.create_session()
     users_from_bd = db_sess.query(User).all()
+    answer = ['Из бд удалены:']
     for user in users_from_bd:
         if int(user.login) in users_id:
             continue
         db_sess.delete(user)
         user_info = await vk.users_get(user_ids=user.login)
-        await vk.messages_send(message=f'Пользователь {user_info[0]["first_name"]} {user_info[0]["last_name"]} удален из бд',
-                               random_id=0,
-                               peer_id=event['object']['message']['peer_id'])
+        answer.append(f"-{user_info[0]['first_name']} {user_info[0]['last_name']}")
     db_sess.commit()
+    await vk.messages_send(message='\n'.join(answer), random_id=0, peer_id=event['object']['message']['peer_id'])
     await vk.messages_send(message="Из бд удалены все юзеры, не найденные в чате",
                            random_id=0,
                            peer_id=event['object']['message']['peer_id'])
@@ -511,7 +511,6 @@ async def start():
     print("work")
     async for event in longpoll.listen():
         try:
-            print(event)
             if event['type'] != "message_new":
                 continue
             if check_event(event):
@@ -540,7 +539,7 @@ async def start():
                         loop.create_task(change_loyalty_user(vk, event))
                     if event['object']['message']['text'].startswith(".удалить"):
                         loop.create_task(delete_user_bd(vk, event))
-                    if event['object']['message']['text'] == 'проверить бд':
+                    if event['object']['message']['text'] == '.проверить бд':
                         loop.create_task(check_database(vk, event))
                     if event['object']['message']['text'] == '.регистрация':
                         loop.create_task(registration(vk, event))
