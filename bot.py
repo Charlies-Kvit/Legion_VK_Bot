@@ -322,7 +322,7 @@ async def get_admin_list(vk, event):
 
 # @bot.on.chat_message(text=['.инфо', '.о боте'])
 async def get_info_about_bot(vk, event):
-    await vk.messages_send(message="Версия бота: 3.1.0\n"
+    await vk.messages_send(message="Версия бота: 3.1.1\n"
                          "Идея: Имя Фамилия\n"
                          "Разработчик: Глеб Бутович\n"
                          "Главный по поддержке хоста: Евгений Грущенко\n"
