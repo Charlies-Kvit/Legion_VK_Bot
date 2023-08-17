@@ -12,3 +12,6 @@ class User(SqlAlchemyBase, SerializerMixin):
     vacation = sqlalchemy.Column(sqlalchemy.Integer, default=0)
     reports_count = sqlalchemy.Column(sqlalchemy.Integer, default=0)
     warning_user = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
+    rank = sqlalchemy.Column(sqlalchemy.Integer, default=0)
+    post = sqlalchemy.Column(sqlalchemy.Integer, default=0)
+    duty = sqlalchemy.Column(sqlalchemy.Integer, default=4)

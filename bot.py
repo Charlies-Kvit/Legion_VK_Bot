@@ -6,12 +6,12 @@ from data import db_session
 from data.user import User
 from data.admins import Admins
 from data.custom_rules import check_chat, check_admin, check_super_admin
-from config import REPORTS_CHAT_ID, token
+from config import REPORTS_CHAT_ID, NORMAL_CHAT_ID, token, ranks, posts
 
 
 # @bot.on.chat_message(MessageFromGroupChat(REPORTS_CHAT_ID), action=["chat_invite_user", "chat_invite_user_by_link"])
 async def new_user(vk, event):
-    if check_chat(event, REPORTS_CHAT_ID):
+    if check_chat(event, NORMAL_CHAT_ID):
         users_info = await vk.users_get(user_ids=event['object']['message']['action']['member_id'])
         db_sess = db_session.create_session()
         user = User(
@@ -27,7 +27,7 @@ async def new_user(vk, event):
 
 # @bot.on.chat_message(MessageFromGroupChat(REPORTS_CHAT_ID), action=['chat_kick_user'])
 async def delete_user(vk, event):
-    if check_chat(event, REPORTS_CHAT_ID):
+    if check_chat(event, NORMAL_CHAT_ID):
         users_info = await vk.users_get(user_ids=event['object']['message']['action']['member_id'])
         db_sess = db_session.create_session()
         user = db_sess.query(User).filter(User.login == users_info[0]['id']).first()
@@ -216,17 +216,19 @@ async def auto_minus_loyalty(vk):
                 user_id = int(user[3:user.find("|")])
                 user_info = await vk.users_get(user_ids=user_id)
                 await vk.messages_send(chat_id=0, random_id=0, peer_id=2000000001,
-                                            message=f'Пользователь {user_info[0]["first_name"]} '
-                                                    f'{user_info[0]["last_name"]} должен быть выгнан из Легиона')
+                                       message=f'Пользователь {user_info[0]["first_name"]} '
+                                               f'{user_info[0]["last_name"]} должен быть выгнан из Легиона')
                 continue
             if user.reports_count == 0:
                 user.unemployed_days += 1
                 if user.loyalty <= 0:
                     user.warning_user = True
             else:
+                if user.reports_count < user.duty:
+                    user.loyalty -= 1
                 user.reports_count = 0
         await vk.messages_send(chat_id=0, random_id=0, message="Авто минус очков лояльности прошел успешно",
-                                    peer_id=2000000001)
+                               peer_id=2000000001)
         db_sess.commit()
         db_sess.close()
     await asyncio.sleep(300)
@@ -280,6 +282,18 @@ async def add_admin(vk, event):
                                random_id=0,
                                peer_id=event['object']['message']['peer_id'])
 
+
+"""async def give_all_you_need(vk, event):
+    db_sess = db_session.create_session()
+    users = db_sess.query(User).all()
+    for user in users:
+        if user.rank is None:
+            get_rank(user)
+            user.post = 0
+            db_sess.commit()
+    db_sess.close()
+    await vk.messages_send(random_id=0, peer_id=event['object']['message']['peer_id'],
+                           message="Все юзеры получили ранги")"""
 
 # @bot.on.chat_message(OnlySuperAdmins(), text=['.удалить админа <user>', '.удалить админа'])
 async def remove_admin(vk, event):
@@ -444,7 +458,10 @@ async def get_user_info(vk, event):
     db_sess.close()
     answer = f"Дни неактива: {user_info.unemployed_days}\n" \
              f"Очки лояльности: {user_info.loyalty}\n" \
-             f"Отпуск: {user_info.vacation}"
+             f"Отпуск: {user_info.vacation}\n" \
+             f"Ранг: {ranks[user_info.rank]}\n" \
+             f"Занимаемая должность: {posts[user_info.post]}\n" \
+             f"Обязанность по отчетам: {user_info.duty}"
     await vk.messages_send(message=answer, peer_id=event['object']['message']['peer_id'], random_id=0)
 
 
@@ -500,6 +517,36 @@ def check_command(event):
     return False
 
 
+"""def get_rank(user):
+    if user.loyalty < 300:
+        user.rank = 0
+        user.duty = 4
+    elif 300 <= user.loyalty < 400:
+        user.rank = 1
+        user.duty = 2
+    elif 400 <= user.loyalty < 500:
+        user.rank = 2
+        user.duty = 2
+    elif 500 <= user.loyalty < 600:
+        user.rank = 3
+        user.duty = 2
+    elif 600 <= user.loyalty < 700:
+        user.rank = 4
+        user.duty = 2
+    elif 700 <= user.loyalty < 1200:
+        user.rank = 5
+        user.duty = 3
+    elif 1200 <= user.loyalty < 1700:
+        user.rank = 6
+        user.duty = 5
+    elif 1700 <= user.loyalty < 2500:
+        user.rank = 7
+        user.duty = 4
+    elif user.loyalty >= 2500:
+        user.rank = 8
+        user.duty = 4"""
+
+
 async def start():
     session = VkApi(token=token)
     vk = session.api_context()
@@ -549,6 +596,8 @@ async def start():
                             loop.create_task(add_admin(vk, event))
                         if event['object']['message']['text'].startswith(".удалить админа"):
                             loop.create_task(remove_admin(vk, event))
+                        """if event['object']['message']['text'] == ".give_ranks":
+                            loop.create_task(give_all_you_need(vk ,event))"""
             else:
                 if check_chat(event, REPORTS_CHAT_ID):
                     loop.create_task(get_report_message(vk, event))
