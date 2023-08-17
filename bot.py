@@ -407,29 +407,28 @@ async def get_top_users(vk, event):
 
 # @bot.on.chat_message(MessageFromGroupChat(REPORTS_CHAT_ID))
 async def get_report_message(vk, event):
-    if check_chat(event, REPORTS_CHAT_ID):
-        try:
-            db_sess = db_session.create_session()
-            if event['object']['message']['attachments'][0]['wall_reply']:
-                user = db_sess.query(User).filter(User.login == event['object']['message']['from_id'])[0]
-                if user is None:
-                    user = User(
-                        login=event['object']['message']['from_id']
-                    )
-                    db_sess.add(user)
-                user.loyalty += 1
-                user.reports_count += 1
-                user.unemployed_days = 0
-                user.vacation = 0
-                db_sess.commit()
-                db_sess.close()
-                user_info = await vk.users_get(user_ids=event['object']['message']['from_id'])
-                await vk.messages_send(chat_id=0, random_id=0, peer_id=2000000001,
-                                            message=f"{user_info[0]['first_name']} {user_info[0]['last_name']} отправил отчет, успешно засчитан")
-        except IndexError:
+    try:
+        db_sess = db_session.create_session()
+        if "https://" in event['object']['message']['text'] or event['object']['message']['attachments'][0]['wall_reply']:
+            user = db_sess.query(User).filter(User.login == event['object']['message']['from_id'])[0]
+            if user is None:
+                user = User(
+                    login=event['object']['message']['from_id']
+                )
+                db_sess.add(user)
+            user.loyalty += 1
+            user.reports_count += 1
+            user.unemployed_days = 0
+            user.vacation = 0
+            db_sess.commit()
             db_sess.close()
-            # await bot.api.messages.delete(peer_id=message.peer_id, message_ids=message_id, delete_for_all=True,
-            #                              group_id=REPORTS_CHAT_ID)
+            user_info = await vk.users_get(user_ids=event['object']['message']['from_id'])
+            await vk.messages_send(chat_id=0, random_id=0, peer_id=2000000001,
+                                        message=f"{user_info[0]['first_name']} {user_info[0]['last_name']} отправил отчет, успешно засчитан")
+    except KeyError:
+        db_sess.close()
+        # await bot.api.messages.delete(peer_id=message.peer_id, message_ids=message_id, delete_for_all=True,
+        #                              group_id=REPORTS_CHAT_ID)
 
 
 # @bot.on.chat_message(text=["/юзер <user>", ".юзер <user>", ".юзер", "/юзер"])
@@ -551,6 +550,8 @@ async def start():
                         if event['object']['message']['text'].startswith(".удалить админа"):
                             loop.create_task(remove_admin(vk, event))
             else:
+                if check_chat(event, REPORTS_CHAT_ID):
+                    loop.create_task(get_report_message(vk, event))
                 if event['object']['message']['action'] in ["chat_invite_user", "chat_invite_user_by_link"]:
                     loop.create_task(new_user(vk, event))
                 if event['object']['message']['action'] == "chat_kick_user":
