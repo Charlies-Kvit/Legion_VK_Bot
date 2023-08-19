@@ -49,7 +49,7 @@ async def kick_user(vk, event):
         return
     user = data[-1]
     user_id = int(user[3:user.find("|")])
-    for i in [4, 5]:
+    for i in [2, 3]:
         await vk.messages_removeChatUser(chat_id=i, user_id=user_id)
     user_info = await vk.users_get(user_ids=user_id)
     await vk.messages_send(message=f'Пользователь {user_info[0]["first_name"]} {user_info[0]["last_name"]} выгнан из чата',
@@ -212,7 +212,7 @@ async def auto_minus_loyalty(vk):
                 user.vacation -= 1
                 continue
             user.loyalty -= user.unemployed_days
-            if user.loyalty <= -10 or user.unemployed_days == 10:
+            if user.unemployed_days == 7:
                 user_id = int(user[3:user.find("|")])
                 user_info = await vk.users_get(user_ids=user_id)
                 await vk.messages_send(chat_id=0, random_id=0, peer_id=2000000001,
@@ -221,7 +221,7 @@ async def auto_minus_loyalty(vk):
                 continue
             if user.reports_count == 0:
                 user.unemployed_days += 1
-                if user.loyalty <= 0:
+                if user.unemployed_days == 3 or user.unemployed_days == 5:
                     user.warning_user = True
             else:
                 if user.reports_count < user.duty:
@@ -255,6 +255,71 @@ async def user_warning(vk):
     loop.create_task(user_warning(vk))
 
 
+async def give_post(vk, event):
+    data = event['object']['message']['text'].split()
+    if len(data) != 4:
+        await vk.messages_send(peer_id=event['object']['message']['peer_id'], random_id=0,
+                               message="Для того, чтоб дать должность, напишите .дать дол @user название должности, "
+                                       "например команда .дать дол @user [M]Наставник даст звание наставник, если у "
+                                       "пользователя есть нужный ранг")
+    else:
+        post = data[-1]
+        if post not in post:
+            await vk.messages_send(peer_id=event['object']['message']['peer_id'], random_id=0,
+                                   message="Такой должности не существует или же вы не написали точь в точь, с"
+                                           " должностями можно ознакомиться, написав команду .должности")
+        user = data[-2]
+        user_id = int(user[3:user.find("|")])
+        user_info = await vk.users_get(user_ids = user_id)
+        db_sess = db_session.create_session()
+        user = db_sess.query(User).filter(User.login == user_id).first()
+        if post in posts[1:3] and user.rank >= 7:
+            user.post = posts.index(post)
+        elif post in posts[3:] and user.rank >=8:
+            user.post = posts.index(post)
+        else:
+            db_sess.close()
+            if post in posts[1:3]:
+                i = 7
+            else:
+                i = 8
+            await vk.messages_send(peer_id=event['object']['message']['peer_id'], random_id=0,
+                                   message=f"Пользователь {user_info[0]['first_name']} {user_info[0]['last_name']} "
+                                           f"не может получить следующую должность: {post}, так как нужен ранг: "
+                                           f"{ranks[i]}, а ранг пользователя: {ranks[user.rank]}")
+            return
+        db_sess.commit()
+        db_sess.close()
+        await vk.messages_send(peer_id=event['object']['message']['peer_id'], random_id=0,
+                               message=f"Пользователь {user_info[0]['first_name']} {user_info[0]['last_name']} "
+                                       f"получил должность: {post}")
+
+
+async def pick_up_post(vk, event):
+    data = event['object']['message']['text'].split()
+    if len(data) != 3:
+        await vk.messages_send(peer_id=event['object']['message']['peer_id'], random_id=0,
+                               message="Чтобы аннулировать должность, используйте .забрать дол @user")
+    else:
+        user = data[-1]
+        user_id = int(user[3:user.find("|")])
+        user_info = await vk.users_get(user_ids=user_id)
+        db_sess = db_session.create_session()
+        user = db_sess.query(User).filter(User.login == user_id).first()
+        if user.post == 0:
+            await vk.messages_send(peer_id=event['object']['message']['peer_id'], random_id=0,
+                                   message=f"Пользователь {user_info[0]['first_name']} {user_info[0]['last_name']} "
+                                           f"итак рядовой, разжалование невозможно")
+            return
+        last_post = user.post
+        user.post = 0
+        db_sess.commit()
+        db_sess.close()
+        await vk.messages_send(peer_id=event['object']['message']['peer_id'], random_id=0,
+                               message=f"Пользователь {user_info[0]['first_name']} {user_info[0]['last_name']} "
+                                       f"разжалован с должности: {posts[last_post]}")
+
+
 async def add_admin(vk, event):
     data = event['object']['message']['text'].split()
     if len(data) == 2:
@@ -283,17 +348,17 @@ async def add_admin(vk, event):
                                peer_id=event['object']['message']['peer_id'])
 
 
-"""async def give_all_you_need(vk, event):
+async def give_all_you_need(vk, event):
     db_sess = db_session.create_session()
     users = db_sess.query(User).all()
     for user in users:
         if user.rank is None:
-            get_rank(user)
+            user = get_rank(user)
             user.post = 0
             db_sess.commit()
     db_sess.close()
     await vk.messages_send(random_id=0, peer_id=event['object']['message']['peer_id'],
-                           message="Все юзеры получили ранги")"""
+                           message="Все юзеры получили ранги")
 
 # @bot.on.chat_message(OnlySuperAdmins(), text=['.удалить админа <user>', '.удалить админа'])
 async def remove_admin(vk, event):
@@ -374,7 +439,8 @@ async def get_help(vk, event):
                                          # '.изменить лояльность', '.изм'])
 async def change_loyalty_user(vk, event):
     data = event['object']['message']['text'].split()
-    if len(data) != 4 or len(data) != 3:
+    print(data)
+    if len(data) != 4 and len(data) != 3:
         await vk.messages_send(
             message='Для добавления пользователю очков лояльности используйте команду: .изменить лояльность @user loyalty\n'
                     'Например: .изменить лояльность @user +10, данная команда прибавит 10 очков лояльности юзеру',
@@ -389,6 +455,7 @@ async def change_loyalty_user(vk, event):
     final_loyalty = change_loyalty(loyalty, user.loyalty)
     if type(final_loyalty) == int:
         user.loyalty = final_loyalty
+        user = get_rank(user)
         db_sess.commit()
         user_info = await vk.users_get(user_ids=user_id)
         await vk.messages_send(message=f"Очки лояльности у пользователя {user_info[0]['first_name']} после изменения: "
@@ -434,6 +501,7 @@ async def get_report_message(vk, event):
             user.reports_count += 1
             user.unemployed_days = 0
             user.vacation = 0
+            user = get_rank(user)
             db_sess.commit()
             db_sess.close()
             user_info = await vk.users_get(user_ids=event['object']['message']['from_id'])
@@ -477,6 +545,19 @@ async def meme(vk, event):
         await vk.messages_send(message="САМ ЧУРБАН", peer_id=event['object']['message']['peer_id'], random_id=0)
 
 
+async def get_ranks_info(vk, event):
+    peer_id = event['object']['message']['peer_id']
+    await vk.messages_send(message="Про систему рангов можете почитать здесь: "
+                                   "https://vk.com/@bot_legion_news-sistema-rangov",
+                           random_id=0, peer_id=peer_id)
+
+
+async def get_posts_info(vk, event):
+    peer_id = event['object']['message']['peer_id']
+    await vk.messages_send(message="Поподробнее про должности можете почитать здесь: "
+                                   "https://vk.com/@bot_legion_news-dolzhnosti-v-legione", random_id=0, peer_id=peer_id)
+
+
 # @bot.on.chat_message(OnlyAdmins(), text=['.регистрация'])
 async def registration(vk, event):
     db_sess = db_session.create_session()
@@ -517,7 +598,7 @@ def check_command(event):
     return False
 
 
-"""def get_rank(user):
+def get_rank(user):
     if user.loyalty < 300:
         user.rank = 0
         user.duty = 4
@@ -544,7 +625,8 @@ def check_command(event):
         user.duty = 4
     elif user.loyalty >= 2500:
         user.rank = 8
-        user.duty = 4"""
+        user.duty = 4
+    return user
 
 
 async def start():
@@ -566,7 +648,15 @@ async def start():
                     loop.create_task(get_user_info(vk, event))
                 if event['object']['message']['text'] == '.рейтинг':
                     loop.create_task(get_top_users(vk, event))
+                if event['object']['message']['text'] == ".ранги":
+                    loop.create_task(get_ranks_info(vk, event))
+                if event['object']['message']['text'] == ".должности":
+                    loop.create_task(get_posts_info(vk, event))
                 if check_admin(event):
+                    if event['object']['message']['text'].startswith(".дать дол"):
+                        loop.create_task(give_post(vk, event))
+                    if event['object']['message']['text'].startswith(".забрать дол"):
+                        loop.create_task(pick_up_post(vk, event))
                     if "чурбан" in event['object']['message']['text'] or "Чурбан" in event['object']['message']['text']:
                         loop.create_task(meme(vk, event))
                     if event['object']['message']['text'] == '.хелп':
@@ -596,8 +686,8 @@ async def start():
                             loop.create_task(add_admin(vk, event))
                         if event['object']['message']['text'].startswith(".удалить админа"):
                             loop.create_task(remove_admin(vk, event))
-                        """if event['object']['message']['text'] == ".give_ranks":
-                            loop.create_task(give_all_you_need(vk ,event))"""
+                        if event['object']['message']['text'] == ".give_ranks":
+                            loop.create_task(give_all_you_need(vk ,event))
             else:
                 if check_chat(event, REPORTS_CHAT_ID):
                     loop.create_task(get_report_message(vk, event))
